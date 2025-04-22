@@ -50,7 +50,7 @@ export class ApplicationConfig {
   }
 
   public getIoAdapter(): WebSocketAdapter {
-    return this.ioAdapter;
+    return this.ioAdapter!;
   }
 
   public addGlobalPipe(pipe: PipeTransform<any>) {
@@ -136,6 +136,11 @@ export class ApplicationConfig {
   }
 
   public enableVersioning(options: VersioningOptions): void {
+    if (Array.isArray(options.defaultVersion)) {
+      // Drop duplicated versions
+      options.defaultVersion = Array.from(new Set(options.defaultVersion));
+    }
+
     this.versioningOptions = options;
   }
 

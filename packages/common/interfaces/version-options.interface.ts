@@ -7,7 +7,13 @@ import { VersioningType } from '../enums/version-type.enum';
  */
 export const VERSION_NEUTRAL = Symbol('VERSION_NEUTRAL');
 
-export type VersionValue = string | string[] | typeof VERSION_NEUTRAL;
+/**
+ * @publicApi
+ */
+export type VersionValue =
+  | string
+  | typeof VERSION_NEUTRAL
+  | Array<string | typeof VERSION_NEUTRAL>;
 
 /**
  * @publicApi
@@ -15,7 +21,7 @@ export type VersionValue = string | string[] | typeof VERSION_NEUTRAL;
 export interface VersionOptions {
   /**
    * Specifies an optional API Version. When configured, methods
-   * withing the controller will only be routed if the request version
+   * within the controller will only be routed if the request version
    * matches the specified value.
    *
    * Supported only by HTTP-based applications (does not apply to non-HTTP microservices).
@@ -25,6 +31,9 @@ export interface VersionOptions {
   version?: VersionValue;
 }
 
+/**
+ * @publicApi
+ */
 export interface HeaderVersioningOptions {
   type: VersioningType.HEADER;
   /**
@@ -33,6 +42,9 @@ export interface HeaderVersioningOptions {
   header: string;
 }
 
+/**
+ * @publicApi
+ */
 export interface UriVersioningOptions {
   type: VersioningType.URI;
   /**
@@ -45,6 +57,9 @@ export interface UriVersioningOptions {
   prefix?: string | false;
 }
 
+/**
+ * @publicApi
+ */
 export interface MediaTypeVersioningOptions {
   type: VersioningType.MEDIA_TYPE;
   /**
@@ -58,7 +73,38 @@ export interface MediaTypeVersioningOptions {
 /**
  * @publicApi
  */
-export type VersioningOptions =
-  | HeaderVersioningOptions
-  | UriVersioningOptions
-  | MediaTypeVersioningOptions;
+export interface CustomVersioningOptions {
+  type: VersioningType.CUSTOM;
+
+  /**
+   * A function that accepts a request object (specific to the underlying platform, ie Express or Fastify)
+   * and returns a single version value or an ordered array of versions, in order from HIGHEST to LOWEST.
+   *
+   * Ex. Returned version array = ['3.1', '3.0', '2.5', '2', '1.9']
+   *
+   * Use type assertion or narrowing to identify the specific request type.
+   */
+  extractor: (request: unknown) => string | string[];
+}
+
+/**
+ * @publicApi
+ */
+interface VersioningCommonOptions {
+  /**
+   * The default version to be used as a fallback when you did not provide some
+   * version to `@Controller()` nor `@Version()`.
+   */
+  defaultVersion?: VersionOptions['version'];
+}
+
+/**
+ * @publicApi
+ */
+export type VersioningOptions = VersioningCommonOptions &
+  (
+    | HeaderVersioningOptions
+    | UriVersioningOptions
+    | MediaTypeVersioningOptions
+    | CustomVersioningOptions
+  );

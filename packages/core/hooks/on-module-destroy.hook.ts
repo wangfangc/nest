@@ -1,5 +1,5 @@
 import { OnModuleDestroy } from '@nestjs/common';
-import { isNil } from '@nestjs/common/utils/shared.utils';
+import { isFunction, isNil } from '@nestjs/common/utils/shared.utils';
 import { iterate } from 'iterare';
 import {
   getNonTransientInstances,
@@ -16,7 +16,7 @@ import { Module } from '../injector/module';
 function hasOnModuleDestroyHook(
   instance: unknown,
 ): instance is OnModuleDestroy {
-  return !isNil((instance as OnModuleDestroy).onModuleDestroy);
+  return isFunction((instance as OnModuleDestroy).onModuleDestroy);
 }
 
 /**
@@ -42,7 +42,7 @@ export async function callModuleDestroyHook(module: Module): Promise<any> {
   const providers = module.getNonAliasProviders();
   // Module (class) instance is the first element of the providers array
   // Lifecycle hook has to be called once all classes are properly destroyed
-  const [_, moduleClassHost] = providers.shift();
+  const [_, moduleClassHost] = providers.shift()!;
   const instances = [
     ...module.controllers,
     ...providers,
@@ -63,6 +63,6 @@ export async function callModuleDestroyHook(module: Module): Promise<any> {
     hasOnModuleDestroyHook(moduleClassInstance) &&
     moduleClassHost.isDependencyTreeStatic()
   ) {
-    await (moduleClassInstance as OnModuleDestroy).onModuleDestroy();
+    await moduleClassInstance.onModuleDestroy();
   }
 }

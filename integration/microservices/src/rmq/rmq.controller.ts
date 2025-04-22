@@ -2,8 +2,12 @@ import { Body, Controller, HttpCode, Post, Query } from '@nestjs/common';
 import {
   ClientProxy,
   ClientProxyFactory,
+  Ctx,
   EventPattern,
   MessagePattern,
+  Payload,
+  RmqContext,
+  RmqRecordBuilder,
   Transport,
 } from '@nestjs/microservices';
 import { from, lastValueFrom, Observable, of } from 'rxjs';
@@ -57,6 +61,49 @@ export class RMQController {
       .reduce(async (a, b) => (await a) && b);
   }
 
+  @Post('multiple-urls')
+  @HttpCode(200)
+  multipleUrls(@Body() data: number[]) {
+    const clientWithMultipleUrls = ClientProxyFactory.create({
+      transport: Transport.RMQ,
+      options: {
+        urls: [`amqp://localhost:5671`, `amqp://localhost:5672`],
+        queue: 'test',
+        queueOptions: { durable: false },
+        socketOptions: { noDelay: true },
+      },
+    });
+    return clientWithMultipleUrls.send<number>({ cmd: 'multiple-urls' }, data);
+  }
+
+  @Post('record-builder-duplex')
+  @HttpCode(200)
+  useRecordBuilderDuplex(@Body() data: Record<string, any>) {
+    const record = new RmqRecordBuilder(data)
+      .setOptions({
+        headers: {
+          ['x-version']: '1.0.0',
+        },
+        priority: 3,
+      })
+      .build();
+
+    return this.client.send('record-builder-duplex', record);
+  }
+
+  @MessagePattern('record-builder-duplex')
+  handleRecordBuilderDuplex(
+    @Payload() data: Record<string, any>,
+    @Ctx() context: RmqContext,
+  ) {
+    const originalMessage = context.getMessage();
+    return {
+      data,
+      headers: originalMessage.properties.headers,
+      priority: originalMessage.properties.priority,
+    };
+  }
+
   @MessagePattern({ cmd: 'sum' })
   sum(data: number[]): number {
     return (data || []).reduce((a, b) => a + b);
@@ -75,6 +122,11 @@ export class RMQController {
   @MessagePattern({ cmd: 'streaming' })
   streaming(data: number[]): Observable<number> {
     return from(data);
+  }
+
+  @MessagePattern({ cmd: 'multiple-urls' })
+  handleMultipleUrls(data: number[]): number {
+    return (data || []).reduce((a, b) => a + b);
   }
 
   @Post('notify')

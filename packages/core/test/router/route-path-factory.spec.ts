@@ -1,6 +1,6 @@
-import { RequestMethod, VersioningType } from '@nestjs/common';
+import { RequestMethod, VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
 import { expect } from 'chai';
-import * as pathToRegexp from 'path-to-regexp';
+import { pathToRegexp } from 'path-to-regexp';
 import * as sinon from 'sinon';
 import { ApplicationConfig } from '../../application-config';
 import { RoutePathFactory } from '../../router/route-path-factory';
@@ -185,8 +185,45 @@ describe('RoutePathFactory', () => {
           ctrlPath: '',
           methodPath: '',
           globalPrefix: '',
+          controllerVersion: VERSION_NEUTRAL,
+          versioningOptions: {
+            type: VersioningType.URI,
+            defaultVersion: VERSION_NEUTRAL,
+          },
         }),
       ).to.deep.equal(['/']);
+
+      expect(
+        routePathFactory.create({
+          ctrlPath: '',
+          methodPath: '',
+          globalPrefix: '',
+          controllerVersion: ['1', VERSION_NEUTRAL],
+          versioningOptions: {
+            type: VersioningType.URI,
+            defaultVersion: ['1', VERSION_NEUTRAL],
+          },
+        }),
+      ).to.deep.equal(['/v1', '/']);
+
+      expect(
+        routePathFactory.create({
+          ctrlPath: '',
+          methodPath: '',
+          globalPrefix: '',
+        }),
+      ).to.deep.equal(['/']);
+
+      sinon.stub(routePathFactory, 'isExcludedFromGlobalPrefix').returns(true);
+      expect(
+        routePathFactory.create({
+          ctrlPath: '/ctrlPath/',
+          methodPath: '/',
+          modulePath: '/',
+          globalPrefix: '/api',
+        }),
+      ).to.deep.equal(['/ctrlPath']);
+      sinon.restore();
     });
   });
 
@@ -210,7 +247,8 @@ describe('RoutePathFactory', () => {
           sinon.stub(applicationConfig, 'getGlobalPrefixOptions').returns({
             exclude: [
               {
-                pathRegex: pathToRegexp('/random'),
+                path: '/random',
+                pathRegex: pathToRegexp('/random').regexp,
                 requestMethod: RequestMethod.ALL,
               },
             ],
@@ -228,7 +266,8 @@ describe('RoutePathFactory', () => {
           sinon.stub(applicationConfig, 'getGlobalPrefixOptions').returns({
             exclude: [
               {
-                pathRegex: pathToRegexp('/cats'),
+                path: '/cats',
+                pathRegex: pathToRegexp('/cats').regexp,
                 requestMethod: RequestMethod.ALL,
               },
             ],
@@ -246,7 +285,8 @@ describe('RoutePathFactory', () => {
             sinon.stub(applicationConfig, 'getGlobalPrefixOptions').returns({
               exclude: [
                 {
-                  pathRegex: pathToRegexp('/cats'),
+                  path: '/cats',
+                  pathRegex: pathToRegexp('/cats').regexp,
                   requestMethod: RequestMethod.GET,
                 },
               ],

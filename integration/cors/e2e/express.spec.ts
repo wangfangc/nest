@@ -1,10 +1,10 @@
-import { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 
 describe('Express Cors', () => {
-  let app: NestFastifyApplication;
+  let app: NestExpressApplication;
   const configs = [
     {
       origin: 'example.com',
@@ -30,7 +30,7 @@ describe('Express Cors', () => {
           imports: [AppModule],
         }).compile();
 
-        app = module.createNestApplication<NestFastifyApplication>();
+        app = module.createNestApplication<NestExpressApplication>();
 
         let requestId = 0;
         const configDelegation = function (req, cb) {
@@ -43,7 +43,7 @@ describe('Express Cors', () => {
         await app.init();
       });
 
-      it(`Should add cors headers based on the first config`, async () => {
+      it(`should add cors headers based on the first config`, async () => {
         return request(app.getHttpServer())
           .get('/')
           .expect('access-control-allow-origin', 'example.com')
@@ -53,7 +53,7 @@ describe('Express Cors', () => {
           .expect('content-length', '0');
       });
 
-      it(`Should add cors headers based on the second config`, async () => {
+      it(`should add cors headers based on the second config`, async () => {
         return request(app.getHttpServer())
           .options('/')
           .expect('access-control-allow-origin', 'sample.com')
@@ -84,14 +84,14 @@ describe('Express Cors', () => {
           cb(null, config);
         };
 
-        app = module.createNestApplication<NestFastifyApplication>(null, {
+        app = module.createNestApplication<NestExpressApplication>({
           cors: configDelegation,
         });
 
         await app.init();
       });
 
-      it(`Should add cors headers based on the first config`, async () => {
+      it(`should add cors headers based on the first config`, async () => {
         return request(app.getHttpServer())
           .get('/')
           .expect('access-control-allow-origin', 'example.com')
@@ -101,7 +101,7 @@ describe('Express Cors', () => {
           .expect('content-length', '0');
       });
 
-      it(`Should add cors headers based on the second config`, async () => {
+      it(`should add cors headers based on the second config`, async () => {
         return request(app.getHttpServer())
           .options('/')
           .expect('access-control-allow-origin', 'sample.com')
@@ -126,7 +126,7 @@ describe('Express Cors', () => {
           imports: [AppModule],
         }).compile();
 
-        app = module.createNestApplication<NestFastifyApplication>();
+        app = module.createNestApplication<NestExpressApplication>();
         app.enableCors(configs[0]);
 
         await app.init();
@@ -153,7 +153,7 @@ describe('Express Cors', () => {
           imports: [AppModule],
         }).compile();
 
-        app = module.createNestApplication<NestFastifyApplication>(null, {
+        app = module.createNestApplication<NestExpressApplication>({
           cors: configs[0],
         });
         await app.init();

@@ -1,5 +1,5 @@
 import { OnModuleInit } from '@nestjs/common';
-import { isNil } from '@nestjs/common/utils/shared.utils';
+import { isFunction, isNil } from '@nestjs/common/utils/shared.utils';
 import { iterate } from 'iterare';
 import {
   getNonTransientInstances,
@@ -14,7 +14,7 @@ import { Module } from '../injector/module';
  * @param instance The instance which should be checked
  */
 function hasOnModuleInitHook(instance: unknown): instance is OnModuleInit {
-  return !isNil((instance as OnModuleInit).onModuleInit);
+  return isFunction((instance as OnModuleInit).onModuleInit);
 }
 
 /**
@@ -38,7 +38,7 @@ export async function callModuleInitHook(module: Module): Promise<void> {
   const providers = module.getNonAliasProviders();
   // Module (class) instance is the first element of the providers array
   // Lifecycle hook has to be called once all classes are properly initialized
-  const [_, moduleClassHost] = providers.shift();
+  const [_, moduleClassHost] = providers.shift()!;
   const instances = [
     ...module.controllers,
     ...providers,
@@ -59,6 +59,6 @@ export async function callModuleInitHook(module: Module): Promise<void> {
     hasOnModuleInitHook(moduleClassInstance) &&
     moduleClassHost.isDependencyTreeStatic()
   ) {
-    await (moduleClassInstance as OnModuleInit).onModuleInit();
+    await moduleClassInstance.onModuleInit();
   }
 }

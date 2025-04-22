@@ -1,9 +1,10 @@
 import { MessageEvent } from '@nestjs/common/interfaces';
+import { isObject } from '@nestjs/common/utils/shared.utils';
 import { IncomingMessage, OutgoingHttpHeaders } from 'http';
 import { Transform } from 'stream';
 
 function toDataString(data: string | object): string {
-  if (typeof data === 'object') {
+  if (isObject(data)) {
     return toDataString(JSON.stringify(data));
   }
 
@@ -11,6 +12,15 @@ function toDataString(data: string | object): string {
     .split(/\r\n|\r|\n/)
     .map(line => `data: ${line}\n`)
     .join('');
+}
+
+export type AdditionalHeaders = Record<
+  string,
+  string[] | string | number | undefined
+>;
+
+interface ReadHeaders {
+  getHeaders?(): AdditionalHeaders;
 }
 
 interface WriteHeaders {
@@ -24,7 +34,8 @@ interface WriteHeaders {
   flushHeaders?(): void;
 }
 
-export type HeaderStream = NodeJS.WritableStream & WriteHeaders;
+export type WritableHeaderStream = NodeJS.WritableStream & WriteHeaders;
+export type HeaderStream = WritableHeaderStream & ReadHeaders;
 
 /**
  * Adapted from https://raw.githubusercontent.com/EventSource/node-ssestream
@@ -40,7 +51,7 @@ export type HeaderStream = NodeJS.WritableStream & WriteHeaders;
  * If this stream is piped to an HTTP Response, it will set appropriate headers.
  */
 export class SseStream extends Transform {
-  private lastEventId: number = null;
+  private lastEventId: number | null = null;
 
   constructor(req?: IncomingMessage) {
     super({ objectMode: true });
@@ -51,9 +62,16 @@ export class SseStream extends Transform {
     }
   }
 
-  pipe<T extends HeaderStream>(destination: T, options?: { end?: boolean }): T {
+  pipe<T extends WritableHeaderStream>(
+    destination: T,
+    options?: {
+      additionalHeaders?: AdditionalHeaders;
+      end?: boolean;
+    },
+  ): T {
     if (destination.writeHead) {
       destination.writeHead(200, {
+        ...options?.additionalHeaders,
         // See https://github.com/dunglas/mercure/blob/master/hub/subscribe.go#L124-L130
         'Content-Type': 'text/event-stream',
         Connection: 'keep-alive',
@@ -65,10 +83,10 @@ export class SseStream extends Transform {
         // NGINX support https://www.nginx.com/resources/wiki/start/topics/examples/x-accel/#x-accel-buffering
         'X-Accel-Buffering': 'no',
       });
-      destination.flushHeaders();
+      destination.flushHeaders?.();
     }
 
-    destination.write(':\n');
+    destination.write('\n');
     return super.pipe(destination, options);
   }
 
@@ -94,11 +112,11 @@ export class SseStream extends Transform {
     cb: (error: Error | null | undefined) => void,
   ) {
     if (!message.id) {
-      this.lastEventId++;
-      message.id = this.lastEventId.toString();
+      this.lastEventId!++;
+      message.id = this.lastEventId!.toString();
     }
 
-    if (!this.write(message, 'utf-8', cb)) {
+    if (!this.write(message, 'utf-8')) {
       this.once('drain', cb);
     } else {
       process.nextTick(cb);

@@ -1,8 +1,7 @@
-import * as sinon from 'sinon';
 import { expect } from 'chai';
+import { HttpException } from '../../exceptions';
 import { ArgumentMetadata } from '../../interfaces';
 import { ParseIntPipe } from '../../pipes/parse-int.pipe';
-import { HttpException } from '../../exceptions';
 
 class CustomTestError extends HttpException {
   constructor() {
@@ -25,11 +24,30 @@ describe('ParseIntPipe', () => {
           parseInt(num, 10),
         );
       });
+      it('should return negative number', async () => {
+        const num = '-3';
+        expect(await target.transform(num, {} as ArgumentMetadata)).to.equal(
+          -3,
+        );
+      });
+      it('should not throw an error if the value is undefined/null and optional is true', async () => {
+        const target = new ParseIntPipe({ optional: true });
+        const value = await target.transform(
+          undefined!,
+          {} as ArgumentMetadata,
+        );
+        expect(value).to.equal(undefined);
+      });
     });
     describe('when validation fails', () => {
       it('should throw an error', async () => {
         return expect(
           target.transform('123abc', {} as ArgumentMetadata),
+        ).to.be.rejectedWith(CustomTestError);
+      });
+      it('should throw an error when number has wrong number encoding', async () => {
+        return expect(
+          target.transform('0xFF', {} as ArgumentMetadata),
         ).to.be.rejectedWith(CustomTestError);
       });
     });

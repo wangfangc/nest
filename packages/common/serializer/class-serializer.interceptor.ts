@@ -1,14 +1,16 @@
+import { ClassSerializerContextOptions } from './class-serializer.interfaces';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Inject, Injectable, Optional } from '../decorators/core';
+import { StreamableFile } from '../file-stream';
 import { CallHandler, ExecutionContext, NestInterceptor } from '../interfaces';
 import { ClassTransformOptions } from '../interfaces/external/class-transform-options.interface';
+import { TransformerPackage } from '../interfaces/external/transformer-package.interface';
 import { loadPackage } from '../utils/load-package.util';
 import { isObject } from '../utils/shared.utils';
-import { StreamableFile } from '../file-stream';
 import { CLASS_SERIALIZER_OPTIONS } from './class-serializer.constants';
 
-let classTransformer: any = {};
+let classTransformer: TransformerPackage = {} as any;
 
 export interface PlainLiteralObject {
   [key: string]: any;
@@ -19,18 +21,33 @@ export interface PlainLiteralObject {
 // between core and common packages
 const REFLECTOR = 'Reflector';
 
+/**
+ * @publicApi
+ */
+export interface ClassSerializerInterceptorOptions
+  extends ClassTransformOptions {
+  transformerPackage?: TransformerPackage;
+}
+
+/**
+ * @publicApi
+ */
 @Injectable()
 export class ClassSerializerInterceptor implements NestInterceptor {
   constructor(
     @Inject(REFLECTOR) protected readonly reflector: any,
-    @Optional() protected readonly defaultOptions: ClassTransformOptions = {},
+    @Optional()
+    protected readonly defaultOptions: ClassSerializerInterceptorOptions = {},
   ) {
-    classTransformer = loadPackage(
-      'class-transformer',
-      'ClassSerializerInterceptor',
-      () => require('class-transformer'),
-    );
-    require('class-transformer');
+    classTransformer =
+      defaultOptions?.transformerPackage ??
+      loadPackage('class-transformer', 'ClassSerializerInterceptor', () =>
+        require('class-transformer'),
+      );
+
+    if (!defaultOptions?.transformerPackage) {
+      require('class-transformer');
+    }
   }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -53,7 +70,7 @@ export class ClassSerializerInterceptor implements NestInterceptor {
    */
   serialize(
     response: PlainLiteralObject | Array<PlainLiteralObject>,
-    options: ClassTransformOptions,
+    options: ClassSerializerContextOptions,
   ): PlainLiteralObject | Array<PlainLiteralObject> {
     if (!isObject(response) || response instanceof StreamableFile) {
       return response;
@@ -66,25 +83,31 @@ export class ClassSerializerInterceptor implements NestInterceptor {
 
   transformToPlain(
     plainOrClass: any,
-    options: ClassTransformOptions,
+    options: ClassSerializerContextOptions,
   ): PlainLiteralObject {
-    return plainOrClass
-      ? classTransformer.classToPlain(plainOrClass, options)
-      : plainOrClass;
+    if (!plainOrClass) {
+      return plainOrClass;
+    }
+    if (!options.type) {
+      return classTransformer.classToPlain(plainOrClass, options);
+    }
+    if (plainOrClass instanceof options.type) {
+      return classTransformer.classToPlain(plainOrClass, options);
+    }
+    const instance = classTransformer.plainToInstance(
+      options.type,
+      plainOrClass,
+      options,
+    );
+    return classTransformer.classToPlain(instance, options);
   }
 
   protected getContextOptions(
     context: ExecutionContext,
-  ): ClassTransformOptions | undefined {
-    return (
-      this.reflectSerializeMetadata(context.getHandler()) ||
-      this.reflectSerializeMetadata(context.getClass())
-    );
-  }
-
-  private reflectSerializeMetadata(
-    obj: object | Function,
-  ): ClassTransformOptions | undefined {
-    return this.reflector.get(CLASS_SERIALIZER_OPTIONS, obj);
+  ): ClassSerializerContextOptions | undefined {
+    return this.reflector.getAllAndOverride(CLASS_SERIALIZER_OPTIONS, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
   }
 }

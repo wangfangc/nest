@@ -1,5 +1,5 @@
 import { BeforeApplicationShutdown } from '@nestjs/common';
-import { isNil } from '@nestjs/common/utils/shared.utils';
+import { isFunction, isNil } from '@nestjs/common/utils/shared.utils';
 import { iterate } from 'iterare';
 import {
   getNonTransientInstances,
@@ -16,7 +16,7 @@ import { Module } from '../injector/module';
 function hasBeforeApplicationShutdownHook(
   instance: unknown,
 ): instance is BeforeApplicationShutdown {
-  return !isNil(
+  return isFunction(
     (instance as BeforeApplicationShutdown).beforeApplicationShutdown,
   );
 }
@@ -51,7 +51,7 @@ export async function callBeforeAppShutdownHook(
   signal?: string,
 ): Promise<void> {
   const providers = module.getNonAliasProviders();
-  const [_, moduleClassHost] = providers.shift();
+  const [_, moduleClassHost] = providers.shift()!;
   const instances = [
     ...module.controllers,
     ...providers,
@@ -70,8 +70,6 @@ export async function callBeforeAppShutdownHook(
     hasBeforeApplicationShutdownHook(moduleClassInstance) &&
     moduleClassHost.isDependencyTreeStatic()
   ) {
-    await (
-      moduleClassInstance as BeforeApplicationShutdown
-    ).beforeApplicationShutdown(signal);
+    await moduleClassInstance.beforeApplicationShutdown(signal);
   }
 }

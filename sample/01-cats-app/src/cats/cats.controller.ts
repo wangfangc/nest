@@ -12,7 +12,7 @@ export class CatsController {
   constructor(private readonly catsService: CatsService) {}
 
   @Post()
-  @Roles('admin')
+  @Roles(['admin'])
   async create(@Body() createCatDto: CreateCatDto) {
     this.catsService.create(createCatDto);
   }
@@ -27,6 +27,7 @@ export class CatsController {
     @Param('id', new ParseIntPipe())
     id: number,
   ) {
-    // get by ID logic
+    // Retrieve a Cat instance by ID
+    console.log(id);
   }
 }

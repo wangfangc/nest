@@ -4,8 +4,11 @@ import {
   OutgoingResponse,
 } from './packet.interface';
 
+/**
+ * @publicApi
+ */
 export interface Serializer<TInput = any, TOutput = any> {
-  serialize(value: TInput): TOutput;
+  serialize(value: TInput, options?: Record<string, any>): TOutput;
 }
 
 export type ProducerSerializer = Serializer<

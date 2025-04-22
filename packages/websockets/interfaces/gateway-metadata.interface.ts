@@ -1,9 +1,10 @@
-/**
- * @external https://github.com/socketio/socket.io/blob/master/lib/index.ts
- */
-
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
+/**
+ * External interface
+ * @see https://github.com/socketio/socket.io/blob/master/lib/index.ts
+ * @publicApi
+ */
 export interface GatewayMetadata {
   /**
    * The name of a namespace
@@ -31,27 +32,27 @@ export interface GatewayMetadata {
   parser?: any;
   /**
    * How many ms before a client without namespace is closed
-   * @default 45000
+   * @default 45_000
    */
   connectTimeout?: number;
   /**
    * How many ms without a pong packet to consider the connection closed
-   * @default 5000
+   * @default 20_000
    */
   pingTimeout?: number;
   /**
    * How many ms before sending a new ping packet
-   * @default 25000
+   * @default 25_000
    */
   pingInterval?: number;
   /**
    * How many ms before an uncompleted transport upgrade is cancelled
-   * @default 10000
+   * @default 10_000
    */
   upgradeTimeout?: number;
   /**
    * How many bytes or characters a message can be, before closing the session (to avoid DoS).
-   * @default 1e5 (100 KB)
+   * @default 1e6 (1 MB)
    */
   maxHttpBufferSize?: number;
   /**
@@ -99,7 +100,7 @@ export interface GatewayMetadata {
    * might be used for sticky-session. Defaults to not sending any cookie.
    * @default false
    */
-  cookie?: any | boolean;
+  cookie?: any;
   /**
    * The options that will be forwarded to the cors module
    */
@@ -116,7 +117,7 @@ export interface GatewayMetadata {
   destroyUpgrade?: boolean;
   /**
    * Milliseconds after which unhandled requests are ended
-   * @default 1000
+   * @default 1_000
    */
   destroyUpgradeTimeout?: number;
 }

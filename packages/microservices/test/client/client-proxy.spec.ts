@@ -8,9 +8,15 @@ class TestClientProxy extends ClientProxy {
   protected async dispatchEvent<T = any>(
     packet: ReadPacket<any>,
   ): Promise<any> {}
+
   public async connect() {
     return Promise.resolve();
   }
+
+  public unwrap<T>(): T {
+    throw new Error('Method not implemented.');
+  }
+
   public publish(pattern, callback): any {}
   public async close() {}
 }
@@ -96,12 +102,12 @@ describe('ClientProxy', function () {
           throw new Error();
         });
         const stream$ = client.send({ test: 3 }, 'test');
-        stream$.subscribe(
-          () => {},
-          err => {
+        stream$.subscribe({
+          next: () => {},
+          error: err => {
             expect(err).to.be.instanceof(Error);
           },
-        );
+        });
       });
     });
     describe('when is connected', () => {
@@ -142,12 +148,12 @@ describe('ClientProxy', function () {
           throw new Error();
         });
         const stream$ = client.emit({ test: 3 }, 'test');
-        stream$.subscribe(
-          () => {},
-          err => {
+        stream$.subscribe({
+          next: () => {},
+          error: err => {
             expect(err).to.be.instanceof(Error);
           },
-        );
+        });
       });
     });
     describe('when is connected', () => {

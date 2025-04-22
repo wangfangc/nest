@@ -1,10 +1,15 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Post, Req } from '@nestjs/common';
 
 @Controller()
 export class AppController {
   @Get('hello/:name')
-  getHello(): string {
-    return 'hello';
+  getHello(@Req() req): string {
+    return 'Hello: ' + req.extras?.data;
+  }
+
+  @Get('params')
+  getParams(@Req() req): any {
+    return req.middlewareParams;
   }
 
   @Get('health')
@@ -20,5 +25,15 @@ export class AppController {
   @Post('test')
   postTest(): string {
     return 'test';
+  }
+
+  @Get()
+  getHome(@Req() req) {
+    return 'Extras: ' + req.extras?.data + ', Count: ' + req.count;
+  }
+
+  @Get('count')
+  getCount(@Req() req) {
+    return req.count;
   }
 }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 export const isUndefined = (obj: any): obj is undefined =>
   typeof obj === 'undefined';
 
@@ -26,16 +25,10 @@ export const isPlainObject = (fn: any): fn is object => {
 
 export const addLeadingSlash = (path?: string): string =>
   path && typeof path === 'string'
-    ? path.charAt(0) !== '/'
+    ? path.charAt(0) !== '/' && path.substring(0, 2) !== '{/'
       ? '/' + path
       : path
     : '';
-
-/**
- * Deprecated. Use the "addLeadingSlash" function instead.
- * @deprecated
- */
-export const validatePath = addLeadingSlash;
 
 export const normalizePath = (path?: string): string =>
   path
@@ -47,10 +40,12 @@ export const normalizePath = (path?: string): string =>
 export const stripEndSlash = (path: string) =>
   path[path.length - 1] === '/' ? path.slice(0, path.length - 1) : path;
 
-export const isFunction = (fn: any): boolean => typeof fn === 'function';
-export const isString = (fn: any): fn is string => typeof fn === 'string';
-export const isConstructor = (fn: any): boolean => fn === 'constructor';
-export const isNil = (obj: any): obj is null | undefined =>
-  isUndefined(obj) || obj === null;
+export const isFunction = (val: any): val is Function =>
+  typeof val === 'function';
+export const isString = (val: any): val is string => typeof val === 'string';
+export const isNumber = (val: any): val is number => typeof val === 'number';
+export const isConstructor = (val: any): boolean => val === 'constructor';
+export const isNil = (val: any): val is null | undefined =>
+  isUndefined(val) || val === null;
 export const isEmpty = (array: any): boolean => !(array && array.length > 0);
-export const isSymbol = (fn: any): fn is symbol => typeof fn === 'symbol';
+export const isSymbol = (val: any): val is symbol => typeof val === 'symbol';

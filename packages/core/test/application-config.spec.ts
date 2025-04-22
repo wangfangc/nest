@@ -20,7 +20,11 @@ describe('ApplicationConfig', () => {
     it('should set global path options', () => {
       const options: GlobalPrefixOptions<ExcludeRouteMetadata> = {
         exclude: [
-          { pathRegex: new RegExp(/health/), requestMethod: RequestMethod.GET },
+          {
+            path: '/health',
+            pathRegex: new RegExp(/health/),
+            requestMethod: RequestMethod.GET,
+          },
         ],
       };
       appConfig.setGlobalPrefixOptions(options);
@@ -128,6 +132,13 @@ describe('ApplicationConfig', () => {
       appConfig.enableVersioning(options as any);
 
       expect(appConfig.getVersioning()).to.be.eql(options);
+    });
+
+    it('should ignore duplicated versions on defaultVersion array', () => {
+      const options = { type: 'test', defaultVersion: ['1', '2', '2', '1'] };
+      appConfig.enableVersioning(options as any);
+
+      expect(appConfig.getVersioning()!.defaultVersion).to.be.eql(['1', '2']);
     });
 
     it('should have undefined as the versioning by default', () => {

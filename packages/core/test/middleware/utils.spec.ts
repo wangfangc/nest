@@ -1,13 +1,15 @@
-import { RequestMethod, Type } from '@nestjs/common';
+import { RequestMethod } from '@nestjs/common';
+import { addLeadingSlash } from '@nestjs/common/utils/shared.utils';
 import { expect } from 'chai';
-import * as pathToRegexp from 'path-to-regexp';
+import { pathToRegexp } from 'path-to-regexp';
 import * as sinon from 'sinon';
 import {
   assignToken,
   filterMiddleware,
   isMiddlewareClass,
-  isRouteExcluded,
+  isMiddlewareRouteExcluded,
   mapToClass,
+  mapToExcludeRoute,
 } from '../../middleware/utils';
 import { NoopHttpAdapter } from '../utils/noop-adapter.spec';
 
@@ -17,6 +19,27 @@ describe('middleware utils', () => {
   class Test {}
   function fnMiddleware(req, res, next) {}
 
+  describe('mapToExcludeRoute', () => {
+    it('should return exclude route metadata', () => {
+      const stringRoute = 'foo';
+      const routeInfo = {
+        path: 'bar',
+        method: RequestMethod.GET,
+      };
+      expect(mapToExcludeRoute([stringRoute, routeInfo])).to.eql([
+        {
+          path: stringRoute,
+          requestMethod: RequestMethod.ALL,
+          pathRegex: pathToRegexp(addLeadingSlash(stringRoute)).regexp,
+        },
+        {
+          path: routeInfo.path,
+          requestMethod: routeInfo.method,
+          pathRegex: pathToRegexp(addLeadingSlash(routeInfo.path)).regexp,
+        },
+      ]);
+    });
+  });
   describe('filterMiddleware', () => {
     let middleware: any[];
     beforeEach(() => {
@@ -38,7 +61,7 @@ describe('middleware utils', () => {
         it('should return a host class', () => {
           const type = mapToClass(
             Test,
-            [{ path: '*', method: RequestMethod.ALL, regex: /./ }],
+            mapToExcludeRoute([{ path: '*', method: RequestMethod.ALL }]),
             noopAdapter,
           );
           expect(type).to.not.eql(Test);
@@ -52,12 +75,12 @@ describe('middleware utils', () => {
         expect(metatype).to.not.eql(fnMiddleware);
       });
       it('should define a `use` method', () => {
-        const metatype = mapToClass(fnMiddleware, [], noopAdapter) as Type<any>;
+        const metatype = mapToClass(fnMiddleware, [], noopAdapter);
         expect(new metatype().use).to.exist;
       });
       it('should encapsulate a function', () => {
         const spy = sinon.spy();
-        const metatype = mapToClass(spy, [], noopAdapter) as Type<any>;
+        const metatype = mapToClass(spy, [], noopAdapter);
         new metatype().use();
         expect(spy.called).to.be.true;
       });
@@ -98,22 +121,35 @@ describe('middleware utils', () => {
       sinon.stub(adapter, 'getRequestMethod').callsFake(() => 'GET');
       sinon.stub(adapter, 'getRequestUrl').callsFake(() => '/cats/3');
     });
-    describe('when route is excluded', () => {
-      const path = '/cats/(.*)';
-      const excludedRoutes = [
+    describe('when route is excluded (new syntax *path)', () => {
+      const path = '/cats/*path';
+      const excludedRoutes = mapToExcludeRoute([
         {
           path,
           method: RequestMethod.GET,
-          regex: pathToRegexp(path),
         },
-      ];
+      ]);
       it('should return true', () => {
-        expect(isRouteExcluded({}, excludedRoutes, adapter)).to.be.true;
+        expect(isMiddlewareRouteExcluded({}, excludedRoutes, adapter)).to.be
+          .true;
+      });
+    });
+    describe('when route is excluded (legacy syntax (.*))', () => {
+      const path = '/cats/(.*)';
+      const excludedRoutes = mapToExcludeRoute([
+        {
+          path,
+          method: RequestMethod.GET,
+        },
+      ]);
+      it('should return true', () => {
+        expect(isMiddlewareRouteExcluded({}, excludedRoutes, adapter)).to.be
+          .true;
       });
     });
     describe('when route is not excluded', () => {
       it('should return false', () => {
-        expect(isRouteExcluded({}, [], adapter)).to.be.false;
+        expect(isMiddlewareRouteExcluded({}, [], adapter)).to.be.false;
       });
     });
   });

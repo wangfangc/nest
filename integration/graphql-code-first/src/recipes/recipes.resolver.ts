@@ -1,6 +1,6 @@
 import { NotFoundException, UseGuards, UseInterceptors } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
-import { PubSub } from 'apollo-server-express';
+import { PubSub } from 'graphql-subscriptions';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { DataInterceptor } from '../common/interceptors/data.interceptor';
 import { NewRecipeInput } from './dto/new-recipe.input';
@@ -35,7 +35,7 @@ export class RecipesResolver {
     @Args('newRecipeData') newRecipeData: NewRecipeInput,
   ): Promise<Recipe> {
     const recipe = await this.recipesService.create(newRecipeData);
-    pubSub.publish('recipeAdded', { recipeAdded: recipe });
+    void pubSub.publish('recipeAdded', { recipeAdded: recipe });
     return recipe;
   }
 
@@ -46,6 +46,6 @@ export class RecipesResolver {
 
   @Subscription(returns => Recipe)
   recipeAdded() {
-    return pubSub.asyncIterator('recipeAdded');
+    return pubSub.asyncIterableIterator('recipeAdded');
   }
 }

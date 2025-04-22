@@ -1,10 +1,17 @@
-/* eslint-disable prefer-spread */
-import { ArgumentsHost, Logger, RpcExceptionFilter } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  IntrinsicException,
+  Logger,
+  RpcExceptionFilter,
+} from '@nestjs/common';
 import { isObject } from '@nestjs/common/utils/shared.utils';
 import { MESSAGES } from '@nestjs/core/constants';
 import { Observable, throwError as _throw } from 'rxjs';
 import { RpcException } from './rpc-exception';
 
+/**
+ * @publicApi
+ */
 export class BaseRpcExceptionFilter<T = any, R = any>
   implements RpcExceptionFilter<T>
 {
@@ -17,19 +24,18 @@ export class BaseRpcExceptionFilter<T = any, R = any>
     }
     const res = exception.getError();
     const message = isObject(res) ? res : { status, message: res };
-    return _throw(message);
+    return _throw(() => message);
   }
 
   public handleUnknownError(exception: T, status: string) {
     const errorMessage = MESSAGES.UNKNOWN_EXCEPTION_MESSAGE;
 
-    const loggerArgs = this.isError(exception)
-      ? [exception.message, exception.stack]
-      : [exception];
-    const logger = BaseRpcExceptionFilter.logger;
-    logger.error.apply(logger, loggerArgs as any);
+    if (!(exception instanceof IntrinsicException)) {
+      const logger = BaseRpcExceptionFilter.logger;
+      logger.error(exception);
+    }
 
-    return _throw({ status, message: errorMessage });
+    return _throw(() => ({ status, message: errorMessage }));
   }
 
   public isError(exception: any): exception is Error {

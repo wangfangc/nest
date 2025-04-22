@@ -78,8 +78,11 @@ describe('ParseArrayPipe', () => {
         target = new ParseArrayPipe();
 
         expect(
-          await target.transform('1,2,3', {} as ArgumentMetadata),
-        ).to.be.deep.equal(['1', '2', '3']);
+          await target.transform(
+            '1,2.0,3,{},true,null,,',
+            {} as ArgumentMetadata,
+          ),
+        ).to.be.deep.equal(['1', '2.0', '3', '{}', 'true', 'null', '', '']);
 
         target = new ParseArrayPipe({ separator: '/' });
 
@@ -93,13 +96,68 @@ describe('ParseArrayPipe', () => {
           await target.transform('1.2.3', {} as ArgumentMetadata),
         ).to.be.deep.equal(['1', '2', '3']);
       });
+
+      describe('and type is specified', () => {
+        it('should parse & validate the array', async () => {
+          target = new ParseArrayPipe({ separator: '.', items: Number });
+
+          expect(
+            await target.transform('1.2.3', {} as ArgumentMetadata),
+          ).to.be.deep.equal([1, 2, 3]);
+
+          target = new ParseArrayPipe({ separator: '.', items: Number });
+
+          try {
+            await target.transform('1.2.a.null.3', {} as ArgumentMetadata);
+            throw null;
+          } catch (err) {
+            expect(err).to.be.instanceOf(BadRequestException);
+            expect(err.getResponse().message).to.deep.equal(
+              '[2] item must be a number',
+            );
+          }
+
+          target = new ParseArrayPipe({ separator: '.', items: Boolean });
+
+          try {
+            await target.transform('1.2.a.null.3', {} as ArgumentMetadata);
+            throw null;
+          } catch (err) {
+            expect(err).to.be.instanceOf(BadRequestException);
+            expect(err.getResponse().message).to.deep.equal(
+              '[0] item must be a boolean value',
+            );
+          }
+
+          target = new ParseArrayPipe({
+            separator: '.',
+            items: Number,
+            stopAtFirstError: false,
+          });
+
+          try {
+            await target.transform('1.2.a.b.null.3', {} as ArgumentMetadata);
+            throw null;
+          } catch (err) {
+            expect(err).to.be.instanceOf(BadRequestException);
+            expect(err.getResponse().message).to.deep.equal([
+              '[2] item must be a number',
+              '[3] item must be a number',
+              '[4] item must be a number',
+            ]);
+          }
+        });
+      });
     });
 
     describe('when items type is determined', () => {
       class ArrItem {}
 
       it('should validate and transform each item', async () => {
-        target = new ParseArrayPipe({ items: ArrItem });
+        target = new ParseArrayPipe({
+          items: ArrItem,
+          forbidUnknownValues: false,
+        });
 
         let items = await target.transform(
           [{}, {}, {}],
@@ -113,6 +171,24 @@ describe('ParseArrayPipe', () => {
         items.forEach(item => {
           expect(item).to.be.instanceOf(ArrItem);
         });
+
+        target = new ParseArrayPipe({ items: Number });
+        expect(
+          await target.transform('1,2.0,3', {} as ArgumentMetadata),
+        ).to.deep.equal([1, 2, 3]);
+
+        target = new ParseArrayPipe({ items: String });
+        expect(
+          await target.transform(
+            '1,2.0,3,{},true,null,,',
+            {} as ArgumentMetadata,
+          ),
+        ).to.deep.equal(['1', '2.0', '3', '{}', 'true', 'null', '', '']);
+
+        target = new ParseArrayPipe({ items: Boolean });
+        expect(
+          await target.transform('true,false', {} as ArgumentMetadata),
+        ).to.deep.equal([true, false]);
       });
       describe('when "stopAtFirstError" is explicitly turned off', () => {
         it('should validate each item and concat errors', async () => {
